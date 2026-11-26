@@ -2245,6 +2245,38 @@ and kernel-axiom audit records concern the formal statements and
 proofs, and do not by themselves verify every sentence of the
 mathematical exposition.
 
+The following table lists, for the principal statements, the Lean
+declarations that formalize them. A reader can compare each
+declaration's type, printed by \texttt{KeyTheorems.lean}, with the
+statement in the text.
+
+\begin{center}\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Statement & Lean declaration(s)\\
+\midrule
+\cref{thm:sharp-values} & \texttt{geometricValue\_eq\_sqrt\_formula},\\
+ & \texttt{frameValue\_eq\_formula}\\
+\cref{cor:eventual-recurrence} & \texttt{geometricValue\_squared\_recurrence\_iff}\\
+\cref{prop:matrix-model} & \texttt{geometricSide\_iff\_feasibleValue},\\
+ & \texttt{General.value\_trace\_equality\_iff}\\
+\cref{prop:stacking} & \texttt{General.value\_superadditive}\\
+\cref{lem:active-r1} & \texttt{active\_residue\_one}\\
+\cref{lem:second-order} & \texttt{strict\_second\_order\_not\_local\_min}\\
+\cref{prop:support-bound} & \texttt{full\_support\_bound\_at\_optimum}\\
+\cref{lem:root-isolation} & \texttt{rootOneEquation\_unique},
+ \texttt{rootTwoEquation\_unique}\\
+\cref{lem:r2-all-active} & \texttt{active\_residue\_two}\\
+\cref{thm:r1,thm:r2-sharp} & \texttt{canonical\_sharp\_values}\\
+Equation \eqref{eq:tetrahedron} & \texttt{tetrahedronValue\_eq\_geometricValue}\\
+\cref{prop:finite-core} & \texttt{General.finite\_core\_iff\_stabilization}\\
+\bottomrule
+\end{tabular}
+\end{center}
+All names are in the namespace \texttt{F3}. In
+\texttt{active\_residue\_two} the hypothesis $\delta>1/5$ is explicit;
+at the optimum it holds because $\Delta>1/5$.
+
 OpenAI ChatGPT, including GPT-6 and Pro-mode assistance, was used
 during 2026 to explore possible arguments, assist with literature
 searches, draft and revise parts of the manuscript, and write and

@@ -20,10 +20,35 @@ step() {
         exit "$rc"
     fi
 }
-for bin in git sha256sum python3 lean lake; do
+for bin in git python3 lean lake; do
     command -v "$bin" >/dev/null || { echo "Missing $bin" >&2; exit 127; }
 done
-step proof_source_hashes sha256sum -c PINNED_PROOF_SOURCES.sha256
+# GNU coreutils provides sha256sum; macOS ships shasum instead.
+if command -v sha256sum >/dev/null; then
+    SHA256_CHECK=(sha256sum -c)
+elif command -v shasum >/dev/null; then
+    SHA256_CHECK=(shasum -a 256 -c)
+else
+    echo "Missing sha256sum or shasum" >&2; exit 127
+fi
+# Fail if a Lean log reports an error, a sorry, or a theorem depending on
+# anything other than the three standard axioms.
+check_lean_log() {
+    local log="$1" bad
+    if grep -E ': error|declaration uses .sorry.' "$log"; then return 1; fi
+    if ! grep -q 'depends on axioms\|does not depend on any axioms' "$log"; then
+        echo "No axiom report found in $log" >&2; return 1
+    fi
+    # A wrapped (multi-line) axiom list would escape the check below.
+    if [ "$(grep -c 'depends on axioms' "$log")" != "$(grep -c 'depends on axioms: \[.*\]' "$log")" ]; then
+        echo "Unparsed axiom report in $log" >&2; return 1
+    fi
+    bad="$(grep -o 'depends on axioms: \[.*\]' "$log" | sed 's/.*\[//; s/\]$//' \
+        | tr ',' '\n' | tr -d ' ' | sort -u \
+        | grep -vxE 'propext|Classical\.choice|Quot\.sound' || true)"
+    if [ -n "$bad" ]; then echo "Disallowed axioms in $log: $bad" >&2; return 1; fi
+}
+step proof_source_hashes "${SHA256_CHECK[@]}" PINNED_PROOF_SOURCES.sha256
 if ! grep -qx 'leanprover/lean4:v4.19.0' lean-toolchain; then echo 'Unexpected Lean toolchain' >&2; exit 2; fi
 printf 'source_toolchain=%s\n' "$(cat lean-toolchain)" > "$RUN/TOOLS.txt"
 lean --version >> "$RUN/TOOLS.txt" 2>&1
@@ -46,9 +71,13 @@ step KeyTheorems lake env lean KeyTheorems.lean
 step AuxiliaryAudit lake env lean AuxiliaryAudit.lean
 step PaperWitnesses lake env lean PaperWitnesses.lean
 step audit_report python3 scripts/check_fresh_audit.py "$RUN/CompleteAudit.log"
+for audit in Audit GeometryAudit ProductMassAudit VariationalAudit; do
+    step "$audit" lake env lean "$audit.lean"
+    step "${audit}_axioms" check_lean_log "$RUN/$audit.log"
+done
 if ! cmp -s lake-manifest.json "$RUN/lake-manifest.before.json"; then
     echo 'Manifest changed during verification' >&2; exit 7
 fi
-step final_proof_source_hashes sha256sum -c PINNED_PROOF_SOURCES.sha256
+step final_proof_source_hashes "${SHA256_CHECK[@]}" PINNED_PROOF_SOURCES.sha256
 printf 'PASSED %s\n' "$(date -u +%FT%TZ)" >> "$STATUS"
 echo "Verified successfully. Logs: $RUN"
